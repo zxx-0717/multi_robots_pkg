@@ -325,7 +325,14 @@ namespace multi_robots_avoidance_action
             }
             else
             {
-                this->state_current_ = RobotState::FORWARDING;
+                if (i == this->other_robots_infos.size() - 1)
+                {
+                    this->state_current_ = RobotState::FORWARDING;
+                }
+                else
+                {
+                    continue;
+                }
             }
         }
                         
