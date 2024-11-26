@@ -314,27 +314,36 @@ namespace multi_robots_avoidance_action
         std::lock_guard<mutex_t> guard(*getMutex());
         this->twist_controller_ = controller_vel;
         RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "other_robots_infos.size: %zd", this->other_robots_infos.size());
-        for (size_t i = 0; i < this->other_robots_infos.size(); i++)
+        
+        if (this->other_robots_infos.size() == 0)
         {
-            this->collision_ = this->robot_collision_check(this->other_robots_infos[i]);
-            if (this->collision_)
+            this->state_current_ = RobotState::FORWARDING;
+        }
+        else
+        {
+            for (size_t i = 0; i < this->other_robots_infos.size(); i++)
             {
-                RCLCPP_INFO_THROTTLE(get_logger(),*get_clock(), 1000, "collision occurs between %s and %s", this->namespace_name_.c_str(), other_robots_infos[i].namespace_name.c_str());
-                this->state_current_ = RobotState::WAITING;
-                break;
-            }
-            else
-            {
-                if (i == this->other_robots_infos.size() - 1)
+                this->collision_ = this->robot_collision_check(this->other_robots_infos[i]);
+                if (this->collision_)
                 {
-                    this->state_current_ = RobotState::FORWARDING;
+                    RCLCPP_INFO_THROTTLE(get_logger(),*get_clock(), 1000, "collision occurs between %s and %s", this->namespace_name_.c_str(), other_robots_infos[i].namespace_name.c_str());
+                    this->state_current_ = RobotState::WAITING;
+                    break;
                 }
                 else
                 {
-                    continue;
+                    if (i == this->other_robots_infos.size() - 1)
+                    {
+                        this->state_current_ = RobotState::FORWARDING;
+                    }
+                    else
+                    {
+                        continue;
+                    }
                 }
             }
         }
+        
                         
         if (this->state_current_ != this->state_last_)
         {
@@ -431,7 +440,7 @@ namespace multi_robots_avoidance_action
         {
             RCLCPP_WARN(this->get_logger(), "current robot %s received a stale pose of robot %s, now_time: %f, pose_time: %f, delta_time: %f, threshold: %f",
                 this->namespace_name_.c_str(), namespace_name.c_str(), now_time, pose_time,  delta_time, this->pose_and_plan_timeout_);
-            return false;
+            return true;
         }
         else
         {
@@ -531,6 +540,8 @@ namespace multi_robots_avoidance_action
                         }
                         else
                         {
+                            i = size_i; // break i
+                            break;  // break j 
                             // 不满足time_tolerance,不记入结果。
                         }
                     }
@@ -560,6 +571,7 @@ namespace multi_robots_avoidance_action
                     index_j_selected = j - delta_j;
                     one_pair.first = index_i_selected;
                     one_pair.second = index_j_selected;
+                    RCLCPP_DEBUG(get_logger(), "push i: %zd and j: %zd",index_i_selected, index_j_selected);
                     compare_index_vec.push_back(one_pair);
                     break;
                 }    
